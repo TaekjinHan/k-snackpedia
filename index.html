@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-SnackPedia 🇰🇷</title>
+    
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f0f2f5; text-align: center; margin: 0; padding: 20px; }
+        h1 { color: #d63031; margin-bottom: 5px; font-size: 24px; }
+        p.sub-title { color: #636e72; font-size: 14px; margin-bottom: 20px; }
+        
+        /* 카메라 화면 스타일 */
+        #reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #000; }
+        
+        /* 결과 박스 스타일 */
+        .result-box { display: none; background: white; margin-top: 20px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); text-align: left; }
+        .snack-name { font-size: 22px; font-weight: bold; color: #2d3436; margin-bottom: 10px; border-bottom: 2px solid #fab1a0; padding-bottom: 10px; }
+        .desc { color: #636e72; line-height: 1.6; font-size: 16px; margin-bottom: 15px; }
+        
+        /* 뱃지 스타일 (맵기, 알러지) */
+        .badge-container { margin-top: 10px; }
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; margin-right: 5px; margin-bottom: 5px; font-weight: bold; }
+        .badge-spicy { background-color: #ff7675; color: white; }
+        .badge-allergy { background-color: #dfe6e9; color: #2d3436; }
+
+        /* 광고 영역 (나중에 애드센스 코드로 교체) */
+        .ad-area { margin-top: 30px; padding: 20px; background: #e1e1e1; color: #888; font-size: 12px; border-radius: 10px; }
+    </style>
+
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+
+    <h1>🇰🇷 K-SnackPedia</h1>
+    <p class="sub-title">Scan the barcode to verify the taste!</p>
+
+    <div id="reader"></div>
+
+    <div id="result" class="result-box">
+        <div class="snack-name" id="name_en">Loading...</div>
+        <p class="desc" id="taste_desc">...</p>
+        <div class="badge-container" id="badges"></div>
+    </div>
+
+    <div class="ad-area">
+        Google AdSense Area<br>(Ads will appear here)
+    </div>
+
+    <script>
+        let snackDB = {};
+
+        // [핵심] 1. 같은 폴더에 있는 snack_db.json 파일을 읽어옵니다.
+        fetch('./snack_db.json')
+            .then(response => response.json())
+            .then(data => {
+                snackDB = data;
+                console.log("DB Loaded:", Object.keys(snackDB).length + " items");
+            })
+            .catch(error => console.error('Error loading DB:', error));
+
+        // 2. 바코드 스캔에 성공했을 때 실행되는 함수
+        function onScanSuccess(decodedText, decodedResult) {
+            // DB에 스캔한 번호가 있는지 확인
+            if (snackDB[decodedText]) {
+                const snack = snackDB[decodedText];
+                
+                // 화면에 정보 채워넣기
+                document.getElementById("name_en").innerText = snack.name_en;
+                document.getElementById("taste_desc").innerText = snack.taste_desc;
+                
+                // 뱃지 초기화
+                const badgesDiv = document.getElementById("badges");
+                badgesDiv.innerHTML = "";
+                
+                // 매운맛 뱃지 (0보다 크면 표시)
+                if(snack.spicy_level > 0) {
+                    badgesDiv.innerHTML += `<span class="badge badge-spicy">🌶️ Spicy Lv.${snack.spicy_level}</span>`;
+                }
+                
+                // 알레르기 뱃지
+                if(snack.allergens) {
+                    snack.allergens.forEach(a => {
+                        badgesDiv.innerHTML += `<span class="badge badge-allergy">⚠️ ${a}</span>`;
+                    });
+                }
+
+                // 숨겨뒀던 결과 박스 보여주기
+                document.getElementById("result").style.display = "block";
+                
+                // 스캔 3초간 멈춤 (연속 스캔 방지)
+                html5QrcodeScanner.pause();
+                setTimeout(() => html5QrcodeScanner.resume(), 3000); 
+            } else {
+                alert("Sorry! Info coming soon.\nBarcode: " + decodedText);
+            }
+        }
+
+        // 3. 카메라 설정 및 시작
+        const html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+
+</body>
+</html>
